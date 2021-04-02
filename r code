@@ -1,0 +1,141 @@
+library(dplyr)
+
+library(ggplot2)
+install.packages("plotly")
+library(plotly)
+install.packages("chron")
+library(chron)
+install.packages("randomForest")
+library(randomForest)
+
+dataset <- read.csv("C:/Users/Jahmawry/Downloads/archive(5)/challenge.csv", header = T, stringsAsFactors = F)
+
+str(dataset)
+
+summary(dataset)
+
+names(dataset) <- tolower(names(dataset))
+
+names(dataset)[9] <- "10km.time"
+
+names(dataset)[11] <- "30km.time"
+
+colSums(is.na(dataset))
+
+which(dataset$half.way.time == "")
+
+
+dataset$gender <- ifelse(dataset$category %in% c("MFM2", "MFM1", "MFM", "MFS", "MFI"), "Female", "Male")
+
+
+dataset$official.seconds <- 24 *60 *60 *as.numeric(times(dataset$official.time))
+
+
+dataset$net.seconds <- 24*60*60 *as.numeric(times(dataset$net.time))
+
+
+dataset$halfway.seconds <- 24*60*60*as.numeric(times(dataset$half.way.time))
+
+
+dataset$ten.km.seconds <- 24*60*60*as.numeric(times(dataset[,9]))
+
+
+dataset$thirty.Km.seconds <- 24*60*60*as.numeric(times(dataset[,11]))
+
+country <- dataset %>% group_by(country) %>% summarise(Count = n()) %>% arrange(desc(Count))
+
+ggplot(country) + geom_bar(mapping= aes(x = reorder(factor(country), Count), y = Count, fill = Count), stat = "identity")+ labs(x = "Country", y = "Number of runners") + ggtitle("Number of runners by country") + coord_flip() + theme_get() 
+
+category <- dataset %>% group_by(category) %>% summarise(Count = n()) %>% arrange(desc(Count)) 
+ggplot(category, aes(x = reorder(factor(category), Count), y = Count, fill = category)) + geom_bar(stat = "identity") + labs(x = "Category", y = "Number of runners", title = "number of runners by category") + coord_flip() + theme_classic() + scale_fill_brewer(palette = "Purples")
+
+dataset$continent <- ifelse(dataset$country %in% c("Hong Kong SAR", "China", "Japan", "Malaysia", "Singapore", "Taiwan", "Macao SAR", "Korea", "South Korea", "Thailand", "Indonesia", "Macau", "Mongolia", "Philippines"), "South East Asia", ifelse(dataset$country %in% c("France", "Portugal", "Italy", "Germany", "Sweden", "Finland", "Spain", "Estonia", "Norway", "The Netherlands", "Ireland", "Czech Republic", "Switzerland", "United Kingdom"), "Europe", ifelse(dataset$country %in% c("Australia", "New Zealand"), "Oceania", ifelse(dataset$country %in% c("United States", "Canada", "Mexico"), "North America", ifelse(dataset$country %in% c("Brazil", "Chile"), "South America", ifelse(dataset$country %in% c("India", "British Indian Ocean Territory","Bahrain"), "Asia", ifelse(dataset$country %in% c("Ethiopia", "Nigeria", "Swaziland", "Mauritius", "South Africa", "Kenya"), "Africa",NA)))))))
+
+continent <- dataset %>% group_by(continent) %>% summarise(Count = n()) %>% arrange(desc(Count))
+ggplot(continent) + geom_bar(aes(x = reorder(factor(continent), Count), y = Count, fill = continent), stat = "identity") + labs(x = "Continent", y = "Number of runners", title = "Number of runners by continent", colour = "Continent") + coord_flip() +scale_fill_brewer(palette = "Set3")
+
+ggplot(dataset[1:20,], aes(x = overall.position, y = official.seconds, col = country)) + geom_text(aes(label = country)) + ggtitle("Country name of top 20 runners") + scale_fill_brewer(palette = "Paired")
+
+ggplot(dataset[1:20,], aes(x = overall.position, y = official.time, col = gender)) + geom_text(aes(label = gender)) + ggtitle("Gender of top 20 runners") + annotate("rect", xmin  = 15.5 , xmax = 20 , ymin = "2:36:49", ymax = "2:37:33", alpha = 0.2) + scale_fill_brewer(palette = "Pastel1")
+
+ggplot(dataset) + geom_boxplot(aes(x = category, y = gender.position, fill = gender)) + labs(x = "category", y = "Gender position", title = "Category wise gender position") + scale_fill_brewer(palette = "PuBu")
+
+ggplot(dataset) + geom_point(aes(x = halfway.seconds, y = net.seconds, col = net.seconds)) + labs(title = "Correlation of halfway and net seconds")
+
+ggplot(dataset) + geom_point(aes(x = ten.km.seconds, y = net.seconds, col = net.seconds)) + labs(title = "Correlation of ten km and net seconds") 
+
+ggplot(dataset) + geom_point(aes(x = thirty.Km.seconds, y = net.seconds, col = net.seconds)) + labs(title = "Correlation of thirty km and net seconds") 
+
+ggplot(dataset) + geom_boxplot(aes(x = category, y =official.seconds, fill = category)) + labs(x = "category", y = "official seconds", title = "Time took by each category") + scale_fill_brewer(palette = "RdBu")
+
+dataset$per.km.speed <-  dataset$thirty.Km.seconds/ 42.195 
+
+ggplot(dataset) + geom_bar(stat= "identity", aes(x = overall.position, y = per.km.speed, fill = per.km.speed)) 
+
+ggplot(dataset,  aes(x = net.seconds)) + geom_histogram(bins = 100, col = "white", fill = "black") + geom_vline(aes(xintercept = median(dataset$net.seconds, na.rm = T), colour = "red"))
+
+partial <- dataset[1:500, ]
+top <- partial %>% group_by(country) %>% summarise(Count = n()) %>% arrange(desc(Count))
+
+ggplot(top) + geom_bar(aes(y = Count, x = reorder(factor(country), Count), fill = country), stat = "identity") + labs(title = "Country with most runners in Top 500", x = "Number of runners" , y = "Country") + coord_flip() 
+
+c <- c("Hong Kong SAR", "China", "Japan", "Ethiopia", "Kenya", "Macao SAR", "Singapore", "United Kingdom", "Australia", "France", "Taiwan", "Italy", "United States", "Bahrain", "Malaysia", "Mongolia", "Germany", "Macau", "Portugal", "South Africa", "South Korea", "Sweden", "Thailand")
+p <- c(346, 62, 21, 12, 9, 7, 6, 6, 4, 4, 4, 3, 3, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1)
+t <- c(4019, 966, 235, 12, 9, 22, 54, 43, 17, 24, 27, 5, 20, 2, 62, 2, 6, 1, 5, 1, 5, 4, 5)
+j <- 1
+
+dataset$score <- 0
+
+for(i in c){
+  k <- p[j]/t[j]
+  dataset$score[dataset$country == i] <- k
+  j = j + 1
+} 
+
+
+fast.country <- dataset %>% group_by(country) %>% summarise(Mean = mean(official.seconds)) 
+fast.country <- fast.country[order(fast.country$Mean, decreasing = F),]
+
+ggplot(fast.country) + geom_bar(stat = "identity", aes(x = reorder(factor(country), -Mean), y = Mean, fill = country))  + coord_flip() + theme(legend.position = "none") +labs(x = "Mean", y = "Country", title = "Fastest country in the marathon")
+
+
+fast.continent <- dataset %>% group_by(continent) %>% summarise(Mean = mean(official.seconds))
+fast.continent <- fast.continent[order(fast.continent$Mean, decreasing = F),]
+
+ggplot(fast.continent) + geom_bar(stat = "identity", aes(x = reorder(factor(continent), -Mean), y = Mean, fill = continent))  + coord_flip() + theme(legend.position = "none") +labs(x = "Mean", y = "continent", title = "Fastest continent in the marathon") + scale_fill_brewer(palette = "Accent")
+
+ggplot(dataset) + geom_boxplot(aes(x = category, y = race.no, fill = category)) + labs(x = "Category", y = "Race no", title = "Race number distribution of different category")
+
+
+ggplot(dataset) + geom_boxplot(aes(x = continent, y = official.seconds, fill = gender)) + labs(x = "Continent", y = "Official seconds", title = "Gender-wise comparison(inter-continent, intra-continent)") + scale_fill_brewer(palette = "Set1") + theme(axis.text.x = element_text(angle = 90)) + geom_hline(yintercept = median(dataset$official.seconds, na.rm = T))
+
+ggplot(dataset) + geom_boxplot(aes(x = country, y = official.seconds, fill = gender)) + labs(x = "Continent", y = "Official seconds", title = "Gender-wise comparison(inter-country, intra-country)") + scale_fill_brewer(palette = "Set1") + theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) + geom_hline(yintercept = median(dataset$official.seconds, na.rm = T))
+
+
+#?
+
+
+d <- which(is.na(dataset$halfway.seconds))
+d
+dataset$halfway.seconds[d] <- median(dataset$halfway.seconds, na.rm = T)
+sum(is.na(dataset$halfway.seconds))
+
+d <- which(is.na(dataset$ten.km.seconds))
+d
+dataset$ten.km.seconds[d] <- median(dataset$halfway.seconds, na.rm = T)
+sum(is.na(dataset$ten.km.seconds))
+
+
+d <- which(is.na(dataset$thirty.Km.seconds))
+d
+dataset$thirty.Km.seconds[d] <- median(dataset$thirty.Km.seconds, na.rm = T)
+sum(is.na(dataset$thirty.Km.seconds))
+
+
+set.seed(7)
+
+fit <- lm(net.seconds~thirty.Km.seconds-1, na.action = "na.exclude" , data = dataset)
+
+d <- predict(fit, dataset, na.action = "na.exclude")
+
+mean((dataset$net.seconds - d)^2)
